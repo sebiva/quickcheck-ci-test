@@ -112,8 +112,7 @@ prop_bank() ->
             catch gen_server:stop({global, bank}),
             pretty_commands(?MODULE, Commands, {H, S, Res},
                             aggregate(command_names(Commands),
-                                      %Res == ok))
-                                      examples:boring(?MODULE, Commands, H)))
+                                      Res == ok))
           end).
 
 
