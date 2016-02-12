@@ -7,4 +7,4 @@ prop_test() ->
   ?FORALL(Xs, list(int()),
           ?FORALL(Ys, list(int()),
                   aggregate([length(Xs++Ys)],
-                            Xs ++ Ys == lists:reverse(lists:reverse(Xs ++ Ys))))).
+                            Ys ++ Xs == lists:reverse(lists:reverse(Xs ++ Ys))))).
