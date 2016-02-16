@@ -10,9 +10,9 @@
                 accounts = [] :: [{atom(), atom(), integer()}],
                 logged_in = [] :: [atom()] }).
 
--define(NAMES, [arne, bengt, carl, david]).
--define(PWDS, [abc123, pwd, '12345', '42']).
--define(ACCOUNTS, [savings, credit, secret]).
+-define(NAMES, [arne, bengt]).
+-define(PWDS, [abc123, pwd]).
+-define(ACCOUNTS, [savings, credit]).
 
 name() -> elements(?NAMES).
 pwd() -> elements(?PWDS).
@@ -78,7 +78,7 @@ create_account(AccountName, Name) ->
 create_account_next(S, _R, [AName, UName]) ->
   SS = case create_account_ok(S, {AName, UName}) of
     true ->
-      S#state{accounts = [{AName, UName} | S#state.accounts]};
+      S#state{accounts = [{AName, UName, 0} | S#state.accounts]};
     false ->
       S
   end,
@@ -94,12 +94,12 @@ create_account_post(S, [AName, UName], R) ->
     _     -> true
   end.
 
-create_account_ok(S, Account = {_AName, UName}) ->
+create_account_ok(S, {AName, UName}) ->
   logged_in(UName, S) andalso
-    not lists:member(Account, S#state.accounts).
+    lists:filter(fun({AN, UN, _B}) -> AN == AName andalso UN == UName end, S#state.accounts) == [].
 
 
-login_args(S) ->
+login_args(_S) ->
   %Names = [Name || {Name, _} <- S#state.users],
   %[{elements(Names), pwd()}].
   [{name(), pwd()}].
@@ -129,7 +129,7 @@ login_post(S, [User = {Name, Pwd}], R) ->
   end.
 
 
-logout_args(S) ->
+logout_args(_S) ->
   [name()].
   %[elements(S#state.logged_in)].
 
@@ -156,6 +156,68 @@ logout_ok(S, Name) ->
   lists:member(Name, S#state.logged_in).
 
 
+deposit_args(_S) ->
+  [{name(), pwd()}, account(), choose(10, 1000)].
+
+deposit(User, Account, Amount) ->
+  bank:deposit(User, Account, Amount).
+
+deposit_pre(S) ->
+  S#state.open.
+
+deposit_next(S, _R, [User, Account, Amount]) ->
+  case deposit_ok(S, User, Account) of
+    OldAcc = {AN, UN, Bal} -> NewBal = Bal + Amount,
+                              S#state{accounts = (S#state.accounts -- [OldAcc]) ++ [{AN, UN, NewBal}]};
+    false -> S
+  end.
+
+deposit_post(S, [User, Account, _Amount], R) ->
+  case deposit_ok(S, User, Account) of
+    false -> R == false;
+    _     -> R == ok
+  end.
+
+deposit_ok(S, User = {Name, _Pwd}, Account) ->
+  case logged_in(Name, S) andalso pwd_ok(User, S) of
+    true -> case lists:filter(fun({AN, UN, _B}) -> AN == Account andalso UN == Name end, S#state.accounts) of
+              [OldAcc] -> OldAcc;
+              _        -> false
+            end;
+    false -> false
+  end.
+
+
+withdraw_args(_S) ->
+  [{name(), pwd()}, account(), choose(10, 1000)].
+
+withdraw(User, Account, Amount) ->
+  bank:withdraw(User, Account, Amount).
+
+withdraw_pre(S) ->
+  S#state.open.
+
+withdraw_next(S, _R, [User, Account, Amount]) ->
+  case withdraw_ok(S, User, Account, Amount) of
+    OldAcc = {AN, UN, Bal} -> NewBal = Bal - Amount,
+                              S#state{accounts = (S#state.accounts -- [OldAcc]) ++ [{AN, UN, NewBal}]};
+    false -> S
+  end.
+
+withdraw_post(S, [User, Account, Amount], R) ->
+  case withdraw_ok(S, User, Account, Amount) of
+    false -> R == false;
+    _     -> R == ok
+  end.
+
+withdraw_ok(S, User = {Name, _Pwd}, Account, Amount) ->
+  case logged_in(Name, S) andalso pwd_ok(User, S) of
+    true -> case lists:filter(fun({AN, UN, _B}) -> AN == Account andalso UN == Name end, S#state.accounts) of
+              [OldAcc = {_AN, _UN, Bal}] when Bal >= Amount -> OldAcc;
+              _        -> false
+            end;
+    false -> false
+  end.
 
 logged_in(Name, S) ->
   lists:member(Name, S#state.logged_in).
