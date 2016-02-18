@@ -61,7 +61,7 @@ unregister_args(_S) ->
   [name()].
 
 unregister(Name) ->
-  erlang:unregister(Name).
+  catch erlang:unregister(Name).
 
 unregister_next(S, _R, [Name]) ->
   S.
@@ -92,11 +92,8 @@ spawn_process_next(S, R, []) ->
   S#state{pids = [R | S#state.pids]}.
 
 spawn_process() ->
-  spawn(fun() ->
-            receive
-              _ -> ok
-            end
-        end).
+  % Make sure we don't have too many processes
+  spawn(timer, sleep, [3000]).
 
 kill_process_args(S) ->
   [pid(S)].
@@ -134,6 +131,7 @@ prop_reg() ->
 prop_reg_ex() ->
   ?FORALL(Cmds,commands(?MODULE),
           begin
+
             [catch erlang:unregister(N) || N <- ?NAMES],
             {H, S, Res} = run_commands(?MODULE, Cmds),
             find_examples:generate_examples(?MODULE, Cmds, H,
