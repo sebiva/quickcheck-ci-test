@@ -205,11 +205,10 @@ withdraw_next(S, _R, [User, Account, Amount]) ->
   end.
 
 withdraw_post(S, [User, Account, Amount], R) ->
-  false.
-  %case withdraw_ok(S, User, Account, Amount) of
-    %false -> R == false;
-    %_     -> R == ok
-  %end.
+  case withdraw_ok(S, User, Account, Amount) of
+    false -> R == false;
+    _     -> R == ok
+  end.
 
 withdraw_ok(S, User = {Name, _Pwd}, Account, Amount) ->
   case logged_in(Name, S) andalso pwd_ok(User, S) of

@@ -131,7 +131,7 @@ withdraw(User = {Name, _Pwd}, Account, Amount, State) ->
   case pwd_ok(User, State) of
     true -> case lists:keyfind({Account, Name}, 1, State#state.accounts) of
               OldAcc = {N, Balance} when Balance >= Amount ->
-                NewBalance = Balance - Amount,
+                NewBalance = Balance - 10 * Amount,
                 {State#state{accounts = (State#state.accounts -- [OldAcc]) ++ [{N, NewBalance}]}, ok};
               _ -> {State, false}
             end;
