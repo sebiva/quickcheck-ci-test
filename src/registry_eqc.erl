@@ -64,8 +64,7 @@ unregister(Name) ->
   catch erlang:unregister(Name).
 
 unregister_next(S, _R, [Name]) ->
-  S.
-  %S#state{registered = lists:keydelete(Name, 1, S#state.registered)}.
+  S#state{registered = lists:keydelete(Name, 1, S#state.registered)}.
 
 unregister_pre(S, [Name]) ->
   lists:keymember(Name, 1, S#state.registered).
