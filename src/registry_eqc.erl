@@ -11,6 +11,8 @@
 
 -define(NAMES, [a,b,c,d]).
 
+-generate_examples(prop_reg_ex).
+
 initial_state() ->
   #state{registered = []}.
 

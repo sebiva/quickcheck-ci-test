@@ -14,6 +14,8 @@
 -define(PWDS, [abc123, pwd]).
 -define(ACCOUNTS, [savings, credit]).
 
+-generate_examples(prop_bank).
+
 name() -> elements(?NAMES).
 pwd() -> elements(?PWDS).
 account() -> elements(?ACCOUNTS).
