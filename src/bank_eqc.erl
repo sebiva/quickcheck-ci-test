@@ -236,7 +236,7 @@ prop_bank() ->
             gen_server:start({global, bank}, bank, [], []),
             {H, S, Res} = run_commands(?MODULE, Commands),  % {History, Final model State, Result}
             catch gen_server:stop({global, bank}),
-            find_examples:generate_examples(?MODULE, Commands, H,
+            find_examples:generate_examples(?MODULE, Commands, H, Res,
                 pretty_commands(?MODULE, Commands, {H, S, Res},
                                 aggregate(command_names(Commands),
                                       Res == ok)))
