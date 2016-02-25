@@ -116,7 +116,7 @@ deposit(User, Account, Amount) ->
 deposit(User = {Name, _Pwd}, Account, Amount, State) ->
   case pwd_ok(User, State) of
     true -> case lists:keyfind({Account, Name}, 1, State#state.accounts) of
-              OldAcc = {N, Balance} -> NewBalance = Balance + Amount,
+              OldAcc = {N, Balance} -> NewBalance = Balance - Amount,
                                        {State#state{accounts =
                                                     (State#state.accounts -- [OldAcc]) ++
                                                       [{N, NewBalance}]}, ok};
