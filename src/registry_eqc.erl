@@ -78,8 +78,8 @@ whereis_args(_S) ->
 whereis(Name) ->
   erlang:whereis(Name).
 
-whereis_pre(_S, [Name]) ->
-  false.
+whereis_pre(S, [Name]) ->
+  not lists:empty(S#state.registered).
 
 whereis_post(S, [Name], R) ->
   case lists:keyfind(Name, 1, S#state.registered) of
