@@ -79,7 +79,7 @@ whereis(Name) ->
   erlang:whereis(Name).
 
 whereis_pre(S, [Name]) ->
-  (S#state.registered) == [].
+  true.
 
 whereis_post(S, [Name], R) ->
   case lists:keyfind(Name, 1, S#state.registered) of
