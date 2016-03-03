@@ -92,8 +92,8 @@ create_account_pre(S) ->
 
 create_account_post(S, [AName, UName], R) ->
   case R of
-    false -> create_account_ok(S, {AName, UName}) == false;
-    _     -> true
+    false -> not create_account_ok(S, {AName, UName});
+    _     -> create_account_ok(S, {AName, UName})
   end.
 
 create_account_ok(S, {AName, UName}) ->
