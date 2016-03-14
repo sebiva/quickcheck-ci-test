@@ -1,6 +1,7 @@
 -module(bank_eqc).
 
 -compile(export_all).
+-compile({parse_transform, eqc_cover}).
 
 -include_lib("eqc/include/eqc.hrl").
 -include_lib("eqc/include/eqc_statem.hrl").
@@ -69,10 +70,11 @@ create_user_ok(S, Name) ->
   end.
 
 
-create_account_args(_S) ->
-  %Names = [N || {N, _P} <- S#state.customers],
-  % TODO: Should the names be picked from customers only?
-  [account(), name()].
+create_account_args(S) ->
+  Names = case S#state.users of [] -> ?NAMES; Us1 -> [Name || {Name, _} <- Us1] end,
+  Accounts = case S#state.accounts of [] -> ?ACCOUNTS; Accs -> [A || {A, _, _} <- Accs] end,
+  [elements(Accounts), elements(Names)].
+  %[account(), name()].
 
 create_account(AccountName, Name) ->
   bank:create_account(AccountName, Name).
@@ -91,9 +93,9 @@ create_account_pre(S) ->
     S#state.open.
 
 create_account_post(S, [AName, UName], R) ->
-  case R of
-    false -> create_account_ok(S, {AName, UName}) == false;
-    _     -> true
+  case create_account_ok(S, {AName, UName}) of
+    true -> R == ok;
+    false -> R == false
   end.
 
 create_account_ok(S, {AName, UName}) ->
@@ -101,10 +103,11 @@ create_account_ok(S, {AName, UName}) ->
     lists:filter(fun({AN, UN, _B}) -> AN == AName andalso UN == UName end, S#state.accounts) == [].
 
 
-login_args(_S) ->
-  %Names = [Name || {Name, _} <- S#state.users],
-  %[{elements(Names), pwd()}].
-  [{name(), pwd()}].
+login_args(S) ->
+  Names = case S#state.users of [] -> ?NAMES; Us1 -> [Name || {Name, _} <- Us1] end,
+  Pwds = case S#state.users of [] -> ?PWDS; Us2 -> [Pwd || {_, Pwd} <- Us2] end,
+  [{elements(Names), elements(Pwds)}].
+  %[{name(), pwd()}].
 
 login(User) ->
   bank:login(User).
@@ -131,9 +134,10 @@ login_post(S, [User = {Name, Pwd}], R) ->
   end.
 
 
-logout_args(_S) ->
-  [name()].
-  %[elements(S#state.logged_in)].
+logout_args(S) ->
+  Names = case S#state.logged_in of [] -> ?NAMES; LoggedIn -> LoggedIn end,
+  [elements(Names)].
+  %[name()].
 
 logout(Name) ->
   bank:logout(Name).
@@ -158,8 +162,12 @@ logout_ok(S, Name) ->
   lists:member(Name, S#state.logged_in).
 
 
-deposit_args(_S) ->
-  [{name(), pwd()}, account(), choose(10, 1000)].
+deposit_args(S) ->
+  Names = case S#state.users of [] -> ?NAMES; Us1 -> [Name || {Name, _} <- Us1] end,
+  Pwds = case S#state.users of [] -> ?PWDS; Us2 -> [Pwd || {_, Pwd} <- Us2] end,
+  Accounts = case S#state.accounts of [] -> ?ACCOUNTS; Accs -> [A || {A, _, _} <- Accs] end,
+  [{elements(Names), elements(Pwds)}, elements(Accounts), choose(10,1000)].
+  %[{name(), pwd()}, account(), choose(10, 1000)].
 
 deposit(User, Account, Amount) ->
   bank:deposit(User, Account, Amount).
@@ -190,8 +198,12 @@ deposit_ok(S, User = {Name, _Pwd}, Account) ->
   end.
 
 
-withdraw_args(_S) ->
-  [{name(), pwd()}, account(), choose(10, 1000)].
+withdraw_args(S) ->
+  Names = case S#state.users of [] -> ?NAMES; Us1 -> [Name || {Name, _} <- Us1] end,
+  Pwds = case S#state.users of [] -> ?PWDS; Us2 -> [Pwd || {_, Pwd} <- Us2] end,
+  Accounts = case S#state.accounts of [] -> ?ACCOUNTS; Accs -> [A || {A, _, _} <- Accs] end,
+  [{elements(Names), elements(Pwds)}, elements(Accounts), choose(10,1000)].
+  %[{name(), pwd()}, account(), choose(10, 1000)].
 
 withdraw(User, Account, Amount) ->
   bank:withdraw(User, Account, Amount).
@@ -241,4 +253,40 @@ prop_bank() ->
                                 aggregate(command_names(Commands),
                                       Res == ok)))
           end).
+
+prop_cover() ->
+  ?FORALL({C1,C2}, ex_cover:gen_commands(?MODULE),
+          begin
+            case C1 of
+              [] -> ok;
+              _ -> io:format("~n!!!!!~n ~p~n", [length(C1)])
+            end,
+            Commands = C1 ++ C2,
+            gen_server:start({global, bank}, bank, [], []),
+            Prop = fun(_H, _S, Res) -> catch gen_server:stop({global, bank}),
+                                     Res == ok
+                   end,
+            ex_cover:ex_coverage(?MODULE, Commands, Prop)
+          end).
+
+prop_swap() ->
+  ?FORALL(Cmds, commands(?MODULE),
+          begin
+            gen_server:start({global, bank}, bank, [], []),
+            {H, _S, Res} = run_commands(?MODULE, Cmds),
+            catch gen_server:stop({global, bank}),
+            ex_swap:interesting(?MODULE, Cmds, H, Res)
+          end).
+
+prop_a() ->
+  ?TIMEOUT(2,
+  ?FORALL(Cmds, commands(?MODULE),
+          begin
+            gen_server:start({global, bank}, bank, [], []),
+            {H, _, Res} = run_commands(?MODULE, Cmds),
+            catch gen_server:stop({global, bank}),
+            %eqc:features([length(H)], eqc:numtests(1, (Res == ok or (length(H) < 3))))
+            eqc:features([length(H)], eqc:numtests(1, (Res == ok) or (length(H) < 4)))
+          end)).
+
 
