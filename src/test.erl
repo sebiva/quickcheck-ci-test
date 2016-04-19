@@ -1,5 +1,6 @@
 -module(test).
 -compile(export_all).
+-compile({parse_transform, eqc_cover}).
 
 -include_lib("eqc/include/eqc.hrl").
 
