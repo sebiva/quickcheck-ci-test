@@ -145,7 +145,7 @@ prop_dets() ->
          end)
          ).
 
-prop_cover() ->
+ignore_prop_cover() ->
   ?FORALL(Cmds, ex_cover:gen_commands(?MODULE),
           ?TRAPEXIT(
              begin
