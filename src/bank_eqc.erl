@@ -19,6 +19,7 @@
 -define(ACCOUNTS, [{?LOW, savings}, {?LOW, credit}]).
 
 -generate_examples(prop_bank).
+-generate_examples(prop_param).
 
 name() -> frequency(?NAMES).
 name(S) ->
@@ -280,16 +281,4 @@ prop_param() ->
                                 aggregate(command_names(Cmds),
                                       Res == ok)))
           end).
-
-prop_a() ->
-  ?TIMEOUT(2,
-  ?FORALL(Cmds, commands(?MODULE),
-          begin
-            gen_server:start({global, bank}, bank, [], []),
-            {H, _, Res} = run_commands(?MODULE, Cmds),
-            catch gen_server:stop({global, bank}),
-            %eqc:features([length(H)], eqc:numtests(1, (Res == ok or (length(H) < 3))))
-            eqc:features([length(H)], eqc:numtests(1, (Res == ok) or (length(H) < 4)))
-          end)).
-
 

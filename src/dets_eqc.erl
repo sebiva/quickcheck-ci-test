@@ -138,7 +138,8 @@ prop_dets() ->
 		   dets:close(dets_table),
 		   file_delete(dets_table),
 		   {H,_S,Res} = run_commands(?MODULE,Cmds),
-       find_examples:generate_examples(?MODULE, Cmds, H, Res,
+       Negative = [false],
+       find_examples:generate_examples(?MODULE, Cmds, H, Res, Negative,
                                        aggregate(command_names(Cmds),
                                                  Res == ok))
          end)
@@ -175,7 +176,8 @@ prop_param() ->
            dets:close(dets_table),
            file_delete(dets_table),
            {H,_S,Res} = eqc_fsm:run_commands(?MODULE,Cmds),
-           find_examples:generate_examples(?MODULE, Cmds, H, Res,
+           Negative = [false],
+           find_examples:generate_examples(?MODULE, Cmds, H, Res, Negative,
                                            aggregate(command_names(Cmds),
                                                      Res == ok))
          end)

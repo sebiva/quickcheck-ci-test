@@ -138,7 +138,8 @@ prop_reg_ex() ->
 
             [catch erlang:unregister(N) || N <- ?NAMES],
             {H, S, Res} = run_commands(?MODULE, Cmds),
-            find_examples:generate_examples(?MODULE, Cmds, H, Res,
+            Negative = [false],
+            find_examples:generate_examples(?MODULE, Cmds, H, Res, Negative,
                                             pretty_commands(?MODULE, Cmds, {H, S, Res},
                                                             aggregate(command_names(Cmds),
                                                                       Res == ok)))
