@@ -132,13 +132,14 @@ model_delete(S,K) ->
 %% Top level property
 
 prop_dets() ->
-  ?FORALL(Cmds, more_commands(3, commands(?MODULE)),
-	    ?TRAPEXIT(
+  %?FORALL(Cmds, more_commands(3, commands(?MODULE)),
+  ?FORALL(Cmds, commands(?MODULE),
+      ?TRAPEXIT(
 	       begin
 		   dets:close(dets_table),
 		   file_delete(dets_table),
 		   {H,_S,Res} = run_commands(?MODULE,Cmds),
-       Negative = [false],
+       Negative = [],
        find_examples:generate_examples(?MODULE, Cmds, H, Res, Negative,
                                        aggregate(command_names(Cmds),
                                                  Res == ok))
