@@ -6,17 +6,14 @@
 -compile(export_all).
 -compile({parse_transform, eqc_cover}).
 
--ifndef(BUG_OPEN_FILE).
--define(BUG_OPEN_FILE,true).
--endif.
-
--ifndef(BUG_INSERT_NEW).
--define(BUG_INSERT_NEW,true).
--endif.
-
 -record(state,{name,type=bag,contents=[]}).
 
 -generate_examples(prop_dets).
+
+negative(false) -> true;
+negative([]) -> true;
+negative({'EXIT', _, _}) -> true;
+negative(_) -> false.
 
 %% Definition of the states. Each state is represented by a function, 
 %% listing the transitions from that state, together with generators 
@@ -78,9 +75,7 @@ next_state_data(_From,_To,S,_V,{call,_,_,_}) ->
 %% Precondition is checked before command is added to the command sequence
 precondition(From,_To,S,{call,_,open_file,[_,[{type,T}]]}) ->
     lists:member(S#state.type,[undefined,T])
-	andalso (From==init_state orelse ?BUG_OPEN_FILE);
-precondition(_From,_To,_S,{call,_,insert_new,_}) ->
-    ?BUG_INSERT_NEW;
+  andalso (From==init_state);
 precondition(_From,_To,_S,{call,_,_,_}) ->
     true.
 
@@ -132,22 +127,21 @@ model_delete(S,K) ->
 %% Top level property
 
 prop_dets() ->
-  %?FORALL(Cmds, more_commands(3, commands(?MODULE)),
-  ?FORALL(Cmds, commands(?MODULE),
-      ?TRAPEXIT(
+  ?FORALL(SwapCmds, more_commands(3, ex_swap:gen_swapcommands(?MODULE)),
+	    ?TRAPEXIT(
 	       begin
+       Cmds = ex_swap:get_commands(SwapCmds),
 		   dets:close(dets_table),
 		   file_delete(dets_table),
 		   {H,_S,Res} = run_commands(?MODULE,Cmds),
-       Negative = [],
-       find_examples:generate_examples(?MODULE, Cmds, H, Res, Negative,
+       find_examples:generate_examples(?MODULE, SwapCmds, H, Res,
                                        aggregate(command_names(Cmds),
                                                  Res == ok))
          end)
          ).
 
 ignore_prop_cover() ->
-  ?FORALL(Cmds, ex_cover:gen_commands(?MODULE),
+  ?FORALL(Cmds, commands(?MODULE),
           ?TRAPEXIT(
              begin
                dets:close(dets_table),
@@ -170,15 +164,14 @@ prop_swap() ->
             end)
          ).
 
-prop_param() ->
-  ?FORALL(Cmds, find_examples:gen_commands_fsm(?MODULE),
+ignore_prop_param() ->
+  ?FORALL(Cmds, find_examples:gen_commands(?MODULE),
 	    ?TRAPEXIT(
 	       begin
            dets:close(dets_table),
            file_delete(dets_table),
            {H,_S,Res} = eqc_fsm:run_commands(?MODULE,Cmds),
-           Negative = [false],
-           find_examples:generate_examples(?MODULE, Cmds, H, Res, Negative,
+           find_examples:generate_examples(?MODULE, Cmds, H, Res,
                                            aggregate(command_names(Cmds),
                                                      Res == ok))
          end)
@@ -237,7 +230,7 @@ open_file(Name,Args) ->
 
 get_contents(Name) ->
     dets:traverse(Name,fun(X)->{continue,X}end).
-			       
+
 file_delete(Name) ->
     case file:delete(Name) of
 	{error,enoent} ->

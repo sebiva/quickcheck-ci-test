@@ -1,6 +1,7 @@
 -module(registry_eqc).
 
 -compile(export_all).
+-compile({parse_transform, eqc_cover}).
 
 -include_lib("eqc/include/eqc.hrl").
 -include_lib("eqc/include/eqc_statem.hrl").
@@ -11,7 +12,12 @@
 
 -define(NAMES, [a,b,c,d]).
 
--generate_examples(prop_reg_ex).
+-generate_examples(prop_reg).
+
+negative(false) -> true;
+negative({'EXIT', _}) -> true;
+negative({'EXIT', _, _}) -> true;
+negative(_) -> false.
 
 initial_state() ->
   #state{registered = []}.
@@ -78,9 +84,6 @@ whereis_args(_S) ->
 whereis(Name) ->
   erlang:whereis(Name).
 
-whereis_pre(S, [Name]) ->
-  true.
-
 whereis_post(S, [Name], R) ->
   case lists:keyfind(Name, 1, S#state.registered) of
     {Name, Pid} ->
@@ -120,26 +123,33 @@ is_exit({'EXIT', _, _}) ->
 is_exit(_) ->
   false.
 
-
 prop_reg() ->
+  ?FORALL(Cmds,commands(?MODULE),
+          begin
+            [catch erlang:unregister(N) || N <- ?NAMES],
+            {H, S, Res} = run_commands(?MODULE, Cmds),
+            find_examples:generate_examples(?MODULE, Cmds, H, Res,
+                                            pretty_commands(?MODULE, Cmds, {H, S, Res},
+                                                            aggregate(command_names(Cmds),
+                                                                      Res == ok)))
+          end).
+
+ignore_prop_cover() ->
   ?FORALL(Commands, commands(?MODULE),
           begin
             [catch erlang:unregister(Name) || Name <- ?NAMES],
-            {H, S, Res} = run_commands(?MODULE, Commands),  % {History, Final model State, Result}
-            pretty_commands(?MODULE, Commands, {H, S, Res},
-                            aggregate(command_names(Commands),
-                                      Res == ok))
+            ex_cover:ex_coverage(?MODULE, Commands, (fun(_H, _S, Res) ->
+              aggregate(command_names(Commands), Res == ok) end))
           end).
 
 
-prop_reg_ex() ->
-  ?FORALL(Cmds,commands(?MODULE),
-          begin
 
+ignore_prop_param() ->
+  ?FORALL(Cmds, find_examples:gen_commands(?MODULE),
+          begin
             [catch erlang:unregister(N) || N <- ?NAMES],
             {H, S, Res} = run_commands(?MODULE, Cmds),
-            Negative = [false],
-            find_examples:generate_examples(?MODULE, Cmds, H, Res, Negative,
+            find_examples:generate_examples(?MODULE, Cmds, H, Res,
                                             pretty_commands(?MODULE, Cmds, {H, S, Res},
                                                             aggregate(command_names(Cmds),
                                                                       Res == ok)))

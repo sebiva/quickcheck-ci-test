@@ -14,12 +14,15 @@
 -define(LOW, 1).
 -define(HIGH, 5).
 
--define(NAMES, [{?LOW, arne}, {?LOW, bengt}]).
--define(PWDS, [{?LOW, abc123}, {?LOW, pwd}]).
--define(ACCOUNTS, [{?LOW, savings}, {?LOW, credit}]).
+-define(NAMES, [{?LOW, u1}, {?LOW, u2}, {?LOW, u3}]).
+-define(PWDS, [{?LOW, p1}, {?LOW, p2}, {?LOW, p3}]).
+-define(ACCOUNTS, [{?LOW, a1}, {?LOW, a2}, {?LOW, a3}]).
 
--generate_examples(prop_bank).
--generate_examples(prop_param).
+-generate_examples([prop_bank]).
+
+negative(false) -> true;
+negative({'EXIT', _, _}) -> true;
+negative(_) -> false.
 
 name() -> frequency(?NAMES).
 name(S) ->
@@ -180,10 +183,10 @@ deposit_next(S, _R, [Name, Pwd, Account, Amount]) ->
     false -> S
   end.
 
-deposit_post(S, [Name, Pwd, Account, _Amount], R) ->
+deposit_post(S, [Name, Pwd, Account, Amount], R) ->
   case deposit_ok(S, Name, Pwd, Account) of
     false -> R == false;
-    _     -> R == ok
+    {_, _, Bal} -> R == (Bal + Amount)
   end.
 
 deposit_ok(S, Name, Pwd, Account) ->
@@ -215,7 +218,7 @@ withdraw_next(S, _R, [Name, Pwd, Account, Amount]) ->
 withdraw_post(S, [Name, Pwd, Account, Amount], R) ->
   case withdraw_ok(S, Name, Pwd, Account, Amount) of
     false -> R == false;
-    _     -> R == ok
+    {_, _, Bal} -> R == (Bal - Amount)
   end.
 
 withdraw_ok(S, Name, Pwd, Account, Amount) ->
@@ -237,20 +240,20 @@ pwd_ok(Name, Pwd, S) ->
   lists:member({Name, Pwd}, S#state.users).
 
 prop_bank() ->
-  ?FORALL(Commands, commands(?MODULE),
+  ?FORALL(SwapCmds, ex_swap:gen_swapcommands(?MODULE),
           begin
+            Commands = ex_swap:get_commands(SwapCmds),
             gen_server:start({global, bank}, bank, [], []),
             {H, S, Res} = run_commands(?MODULE, Commands),  % {History, Final model State, Result}
             catch gen_server:stop({global, bank}),
-            Negative = [false],
-            find_examples:generate_examples(?MODULE, Commands, H, Res, Negative,
+            find_examples:generate_examples(?MODULE, SwapCmds, H, Res,
                 pretty_commands(?MODULE, Commands, {H, S, Res},
                                 aggregate(command_names(Commands),
                                       Res == ok)))
           end).
 
 ignore_prop_cover() ->
-  ?FORALL(Commands, ex_cover:gen_commands(?MODULE),
+  ?FORALL(Commands, commands(?MODULE),
           begin
             gen_server:start({global, bank}, bank, [], []),
             Prop = fun(_H, _S, Res) -> catch gen_server:stop({global, bank}),
@@ -269,14 +272,13 @@ prop_swap() ->
             ex_swap:interesting(?MODULE, SwapCmds, H, Res)
           end).
 
-prop_param() ->
-  ?FORALL(Cmds, find_examples:gen_commands_statem(?MODULE),
+ignore_prop_param() ->
+  ?FORALL(Cmds, find_examples:gen_commands(?MODULE),
           begin
             gen_server:start({global, bank}, bank, [], []),
             {H, S, Res} = run_commands(?MODULE, Cmds),
             catch gen_server:stop({global, bank}),
-            Negative = [false],
-            find_examples:generate_examples(?MODULE, Cmds, H, Res, Negative,
+            find_examples:generate_examples(?MODULE, Cmds, H, Res,
                 pretty_commands(?MODULE, Cmds, {H, S, Res},
                                 aggregate(command_names(Cmds),
                                       Res == ok)))

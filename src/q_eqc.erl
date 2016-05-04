@@ -14,7 +14,7 @@
 
 -record(state,{ptr,size,elements}).
 
--generate_examples([prop_ex, prop_q]).
+-generate_examples(prop_q).
 
 %% Definition of the states. Each state is represented by a function,
 %% listing the transitions from that state, together with generators
@@ -69,14 +69,13 @@ postcondition(_From,_To,_S,_Call,_Res) ->
     true.
 
 prop_q() ->
-  eqc_c:start(q, [definitions_only, {c_src, "../src/q.c"}]),
+    eqc_c:start(q, [definitions_only, {c_src, "../examples/q.c"}]),
     ?FORALL(Cmds,commands(?MODULE),
       prop_q(Cmds)).
 
 prop_q(Cmds) ->
     {H,S,Res} = run_commands(?MODULE,Cmds),
-    Negative = [],
-    find_examples:generate_examples(?MODULE, Cmds, H, Res, Negative,
+    find_examples:generate_examples(?MODULE, Cmds, H, Res,
                                     pretty_commands(?MODULE, Cmds, {H, S, Res},
                                                     aggregate(command_names(Cmds),
                                                               Res == ok))).

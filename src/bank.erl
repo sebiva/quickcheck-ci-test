@@ -122,7 +122,7 @@ deposit(Name, Pwd, Account, Amount, State) ->
               OldAcc = {N, Balance} -> NewBalance = Balance + Amount,
                                        {State#state{accounts =
                                                     (State#state.accounts -- [OldAcc]) ++
-                                                      [{N, NewBalance}]}, ok};
+                                                      [{N, NewBalance}]}, NewBalance};
               _                     -> {State, false}
             end;
     false -> {State, false}
@@ -136,7 +136,7 @@ withdraw(Name, Pwd, Account, Amount, State) ->
     true -> case lists:keyfind({Account, Name}, 1, State#state.accounts) of
               OldAcc = {N, Balance} when Balance >= Amount ->
                 NewBalance = Balance - Amount,
-                {State#state{accounts = (State#state.accounts -- [OldAcc]) ++ [{N, NewBalance}]}, ok};
+                {State#state{accounts = (State#state.accounts -- [OldAcc]) ++ [{N, NewBalance}]}, NewBalance};
               _ -> {State, false}
             end;
     false -> {State, false}
