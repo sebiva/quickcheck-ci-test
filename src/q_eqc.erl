@@ -69,7 +69,7 @@ postcondition(_From,_To,_S,_Call,_Res) ->
     true.
 
 prop_q() ->
-    eqc_c:start(q, [definitions_only, {c_src, "../examples/q.c"}]),
+    eqc_c:start(q, [definitions_only, {c_src, "../src/q.c"}]),
     ?FORALL(Cmds,commands(?MODULE),
       prop_q(Cmds)).
 
