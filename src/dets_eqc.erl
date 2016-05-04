@@ -127,7 +127,7 @@ model_delete(S,K) ->
 %% Top level property
 
 prop_dets() ->
-  ?FORALL(SwapCmds, more_commands(3, ex_swap:gen_swapcommands(?MODULE)),
+  ?FORALL(SwapCmds, ex_swap:gen_swapcommands(?MODULE),
 	    ?TRAPEXIT(
 	       begin
        Cmds = ex_swap:get_commands(SwapCmds),
