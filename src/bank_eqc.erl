@@ -264,7 +264,7 @@ prop_bank() ->
                                       Res == ok)))
           end).
 
-prop_cover() ->
+ignore_prop_cover() ->
   ?FORALL(Commands, commands(?MODULE),
           begin
             gen_server:start({global, bank}, bank, [], []),
