@@ -11,14 +11,16 @@
                 accounts = [] :: [{atom(), atom(), integer()}],
                 logged_in = [] :: [atom()] }).
 
+-generate_examples([prop_bank]).
+
+%%%%% Generators
+
 -define(LOW, 1).
 -define(HIGH, 5).
 
 -define(NAMES, [{?LOW, u1}, {?LOW, u2}, {?LOW, u3}]).
--define(PWDS, [{?LOW, p1}, {?LOW, p2}, {?LOW, p3}]).
+-define(PWDS, [{?LOW, p1}, {?LOW, p2}, {?LOW, p2}]).
 -define(ACCOUNTS, [{?LOW, a1}, {?LOW, a2}, {?LOW, a3}]).
-
--generate_examples([prop_bank]).
 
 negative(false) -> true;
 negative({'EXIT', _, _}) -> true;
@@ -37,27 +39,26 @@ account(S) ->
   InState = [{?HIGH, Account} || {Account, _, _} <- S#state.accounts],
   frequency(InState ++ ?ACCOUNTS).
 
-is_exit({'EXIT', _}) ->
-  true;
-is_exit(_) ->
-  false.
+%%%%% State machine specification
 
 initial_state() ->
   #state{}.
 
+%%%%% Open
 open_args(_S) -> [].
 open() -> bank:open().
 open_pre(S) -> not S#state.open.
 open_next(S, _R, []) -> S#state{open = true}.
 open_post(_S, [], R) -> R == ok.
 
+%%%%% Close
 close_args(_S) -> [].
 close() -> bank:close().
 close_pre(S) -> S#state.open.
 close_next(S, _R, []) -> S#state{open = false, logged_in = []}.
 close_post(_S, [], R) -> R == ok.
 
-
+%%%%% Create user
 create_user_args(_S) ->
   [name(), pwd()].
 
@@ -85,7 +86,7 @@ create_user_ok(S, Name) ->
     _     -> false
   end.
 
-
+%%%%% Create account
 create_account_args(S) ->
   [account(S), name(S)].
 
@@ -94,10 +95,8 @@ create_account(AccountName, Name) ->
 
 create_account_next(S, _R, [AName, UName]) ->
   SS = case create_account_ok(S, {AName, UName}) of
-    true ->
-      S#state{accounts = [{AName, UName, 0} | S#state.accounts]};
-    false ->
-      S
+    true  -> S#state{accounts = [{AName, UName, 0} | S#state.accounts]};
+    false -> S
   end,
   SS.
 
@@ -113,9 +112,11 @@ create_account_post(S, [AName, UName], R) ->
 
 create_account_ok(S, {AName, Name}) ->
   logged_in(Name, S) andalso
-    lists:filter(fun({AN, UN, _B}) -> AN == AName andalso UN == Name end, S#state.accounts) == [].
+    lists:filter(fun({AN, UN, _B}) ->
+                     AN == AName andalso UN == Name
+                 end, S#state.accounts) == [].
 
-
+%%%%% Logout
 login_args(S) ->
   [name(S), pwd(S)].
 
@@ -136,12 +137,14 @@ login_next(S, _R, [Name, Pwd]) ->
 
 login_post(S, [Name, Pwd], R) ->
   case R of
-    false -> logged_in(Name, S) or not exists(Name, S) or not pwd_ok(Name, Pwd, S);
+    false -> logged_in(Name, S) orelse
+               not exists(Name, S) orelse
+                 not pwd_ok(Name, Pwd, S);
     ok    -> not logged_in(Name, S) andalso
                pwd_ok(Name, Pwd, S)
   end.
 
-
+%%%%% Logout
 logout_args(S) ->
   [name(S)].
 
@@ -166,9 +169,9 @@ logout_post(S, [Name], R) ->
 logout_ok(S, Name) ->
   lists:member(Name, S#state.logged_in).
 
-
+%%%%% Deposit
 deposit_args(S) ->
-  [name(S), pwd(S), account(S), choose(10, 1000)].
+  [name(S), pwd(S), account(S), choose(1, 20)].
 
 deposit(Name, Pwd, Account, Amount) ->
   bank:deposit(Name, Pwd, Account, Amount).
@@ -178,8 +181,9 @@ deposit_pre(S) ->
 
 deposit_next(S, _R, [Name, Pwd, Account, Amount]) ->
   case deposit_ok(S, Name, Pwd, Account) of
-    OldAcc = {AN, UN, Bal} -> NewBal = Bal + Amount,
-                              S#state{accounts = (S#state.accounts -- [OldAcc]) ++ [{AN, UN, NewBal}]};
+    OldAcc = {AN, UN, Bal} ->
+      NewBal = Bal + Amount,
+      S#state{accounts=(S#state.accounts--[OldAcc])++[{AN, UN, NewBal}]};
     false -> S
   end.
 
@@ -191,16 +195,18 @@ deposit_post(S, [Name, Pwd, Account, Amount], R) ->
 
 deposit_ok(S, Name, Pwd, Account) ->
   case logged_in(Name, S) andalso pwd_ok(Name, Pwd, S) of
-    true -> case lists:filter(fun({AN, UN, _B}) -> AN == Account andalso UN == Name end, S#state.accounts) of
+    true -> case lists:filter(fun({AN, UN, _B}) ->
+                                  AN == Account andalso UN == Name end,
+                              S#state.accounts) of
               [OldAcc] -> OldAcc;
               _        -> false
             end;
     false -> false
   end.
 
-
+%%%%% Withdraw
 withdraw_args(S) ->
-  [name(S), pwd(S), account(S), choose(10, 1000)].
+  [name(S), pwd(S), account(S), choose(1, 20)].
 
 withdraw(Name, Pwd, Account, Amount) ->
   bank:withdraw(Name, Pwd, Account, Amount).
@@ -210,8 +216,9 @@ withdraw_pre(S) ->
 
 withdraw_next(S, _R, [Name, Pwd, Account, Amount]) ->
   case withdraw_ok(S, Name, Pwd, Account, Amount) of
-    OldAcc = {AN, UN, Bal} -> NewBal = Bal - Amount,
-                              S#state{accounts = (S#state.accounts -- [OldAcc]) ++ [{AN, UN, NewBal}]};
+    OldAcc = {AN, UN, Bal} ->
+      NewBal = Bal - Amount,
+      S#state{accounts=(S#state.accounts--[OldAcc])++[{AN, UN, NewBal}]};
     false -> S
   end.
 
@@ -223,7 +230,9 @@ withdraw_post(S, [Name, Pwd, Account, Amount], R) ->
 
 withdraw_ok(S, Name, Pwd, Account, Amount) ->
   case logged_in(Name, S) andalso pwd_ok(Name, Pwd, S) of
-    true -> case lists:filter(fun({AN, UN, _B}) -> AN == Account andalso UN == Name end, S#state.accounts) of
+    true -> case lists:filter(fun({AN, UN, _B}) ->
+                                  AN == Account andalso UN == Name end,
+                              S#state.accounts) of
               [OldAcc = {_AN, _UN, Bal}] when Bal >= Amount -> OldAcc;
               _        -> false
             end;
@@ -239,12 +248,15 @@ exists(Name, S) ->
 pwd_ok(Name, Pwd, S) ->
   lists:member({Name, Pwd}, S#state.users).
 
+%%%%% Properties
+
 prop_bank() ->
   ?FORALL(SwapCmds, ex_swap:gen_swapcommands(?MODULE),
+  %?FORALL(SwapCmds, commands(?MODULE),
           begin
             Commands = ex_swap:get_commands(SwapCmds),
             gen_server:start({global, bank}, bank, [], []),
-            {H, S, Res} = run_commands(?MODULE, Commands),  % {History, Final model State, Result}
+            {H, S, Res} = run_commands(?MODULE, Commands),
             catch gen_server:stop({global, bank}),
             find_examples:generate_examples(?MODULE, SwapCmds, H, Res,
                 pretty_commands(?MODULE, Commands, {H, S, Res},
@@ -252,12 +264,13 @@ prop_bank() ->
                                       Res == ok)))
           end).
 
-ignore_prop_cover() ->
+prop_cover() ->
   ?FORALL(Commands, commands(?MODULE),
           begin
             gen_server:start({global, bank}, bank, [], []),
-            Prop = fun(_H, _S, Res) -> catch gen_server:stop({global, bank}),
-                                     Res == ok
+            Prop = fun(_H, _S, Res) ->
+                       catch gen_server:stop({global, bank}),
+                       Res == ok
                    end,
             ex_cover:ex_coverage(?MODULE, Commands, Prop)
           end).
@@ -272,7 +285,7 @@ prop_swap() ->
             ex_swap:interesting(?MODULE, SwapCmds, H, Res)
           end).
 
-ignore_prop_param() ->
+prop_param() ->
   ?FORALL(Cmds, find_examples:gen_commands(?MODULE),
           begin
             gen_server:start({global, bank}, bank, [], []),
