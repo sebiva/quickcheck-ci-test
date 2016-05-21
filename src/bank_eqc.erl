@@ -251,8 +251,8 @@ pwd_ok(Name, Pwd, S) ->
 %%%%% Properties
 
 prop_bank() ->
-  ?FORALL(SwapCmds, ex_swap:gen_swapcommands(?MODULE),
-  %?FORALL(SwapCmds, commands(?MODULE),
+  %?FORALL(SwapCmds, ex_swap:gen_swapcommands(?MODULE),
+  ?FORALL(SwapCmds, commands(?MODULE),
           begin
             Commands = ex_swap:get_commands(SwapCmds),
             gen_server:start({global, bank}, bank, [], []),
