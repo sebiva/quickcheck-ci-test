@@ -111,7 +111,7 @@ create_account_post(S, [AName, UName], R) ->
   end.
 
 create_account_ok(S, {AName, Name}) ->
-  logged_in(Name, S) andalso
+  %logged_in(Name, S) andalso
     lists:filter(fun({AN, UN, _B}) ->
                      AN == AName andalso UN == Name
                  end, S#state.accounts) == [].
