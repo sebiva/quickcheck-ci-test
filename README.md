@@ -1,5 +1,7 @@
-Example code
+# Example code
 
-This repo contains example code for testing QuickCheck-CI on.
+This repo contains example code for testing QuickCheck CI.
 
-[<img src="192.168.0.16/p/sebiva/quickcheck-ci-test.svg" alt="Build Status" width="160px">](192.168.0.16/p/hanssv/example_proj)
+The master branch should be clean, while the other branches may contain
+intentional bugs used to test QuickCheck CI.
+
